@@ -32,3 +32,8 @@ I take no responsibility for what you do with this program.
 &nbsp;&nbsp;If a recursed user has over this many pictures it will skip them (default: 200)  
 `--version`  
 &nbsp;&nbsp;Displays version information  
+
+#### Possible Future Features/Changes:
+* Add more websites?  
+* Change scroll from hardcoded delay to dynamic delay (if possible)  
+* Use lxml to scrape images instead of selenium to possibly speed it up a bit
