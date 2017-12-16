@@ -126,12 +126,11 @@ def scrapeUser(user, depth):
 		if friends:
 			for friend in friends:
 				scrapeUser(friend, depth-1)
-				print chr(27) + "[2J" + bcolors.OKGREEN + '\t' + user + " friends: " + str(friends.index(friend)+1) + "/" + str(len(friends)) + bcolors.ENDC
+				print bcolors.OKGREEN + '\t' + user + " friends: " + str(friends.index(friend)+1) + "/" + str(len(friends)) + bcolors.ENDC
  		else:
 			print bcolors.FAIL + user + " has no friends :(" + bcolors.ENDC
 	#If all goes well, print a success
 	if depth == initDepth:
 		print "Successfully saved wordlist " + initUser
-#Clear the screen and run the initial function
-print chr(27) + "[2J"
+#Run the initial function
 scrapeUser(initUser, initDepth)
