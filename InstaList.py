@@ -10,13 +10,13 @@ parser = argparse.ArgumentParser(prog='Instalist', description='Scrape a non-pri
 parser.add_argument('User', help='An Instagram username')
 parser.add_argument('-d', '--depth', default=0, type=int, help='If specified, other users who have commented on specified users pictures will be scraped as well (recurse up to depth N)')
 parser.add_argument('-m', '--min', default=2, type=int, help='Minimum word length to capture (default: %(default)s)')
-parser.add_argument('-p', '--pictures', default=200, type=int, help='If a recursed user has over this many pictures it will skip them (default: %(default)s)')
+parser.add_argument('-p', '--post', default=200, type=int, help='If a recursed user has over this many pictures it will skip them (default: %(default)s)')
 parser.add_argument('--version', action='version', version='%(prog)s v0.1', help='Displays version information')
 args = parser.parse_args()
-inituser = args.User
-initdepth = args.depth
-MINWORDSIZE = args.min
-pictures = args.pictures
+initUser = args.User
+initDepth = args.depth
+minWordSize = args.min
+postLimit = args.post
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -28,10 +28,12 @@ class bcolors:
     UNDERLINE = '\033[4m'
 driver = webdriver.PhantomJS()
 driver.set_window_size(1920, 1080)
-words = []
-allfriends = []
-REGEX = re.compile('[^a-zA-Z]')
+allWords = []
+allFriends = []
+regex = re.compile('[^a-zA-Z]')
 def scrapeUser(user, depth):
+	friends = []
+	links = []
 	#Check if user exists
 	driver.get("https://www.instagram.com/"+user+"/")
 	try:
@@ -48,10 +50,10 @@ def scrapeUser(user, depth):
 	except NoSuchElementException:
 		pass
 	#If we have recursed at least once make sure the number of posts is less than the limit
-	if depth != initdepth:
+	if depth != initDepth:
 		try:
-			postNumber = driver.find_element_by_xpath("//body/span/section/main/article/header/section/ul/li[1]/span/span")
-			if int(postNumber.text.replace(",","")) > pictures:
+			posts = driver.find_element_by_xpath("//body/span/section/main/article/header/section/ul/li[1]/span/span")
+			if int(posts.text.replace(",","")) > postLimit:
 				print bcolors.FAIL + '\t' + "Too many posts, skipping" + bcolors.ENDC
 				return 0
 		except NoSuchElementException:
@@ -59,54 +61,51 @@ def scrapeUser(user, depth):
 	#Scroll the screen if needed
 	try:
 		driver.find_element_by_xpath("//a[text()='Load more']").click()
-		last_height = driver.execute_script("return document.body.scrollHeight")
+		lastHeight = driver.execute_script("return document.body.scrollHeight")
 		count = 0
 		while True:
 			print bcolors.OKBLUE + '\t' + "Scrolling" + "."*((count%3)+1) + bcolors.ENDC
 			count = count + 1
 			driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
 			sleep(2)
-			new_height = driver.execute_script("return document.body.scrollHeight")
-			if new_height == last_height:
+			newHeight = driver.execute_script("return document.body.scrollHeight")
+			if newHeight == lastHeight:
 				break
-			last_height = new_height
+			lastHeight = newHeight
 	except NoSuchElementException:
 		print bcolors.OKBLUE + '\t' + "No Need To Scroll" + bcolors.ENDC
 	#Identify links to posts
-	xpath = "//a[contains(@href, '?taken-by=" + user + "')]"
 	try:
-	        elements = driver.find_elements_by_xpath(xpath)
+	        linkElements = driver.find_elements_by_xpath("//a[contains(@href, '?taken-by=" + user + "')]")
 	except NoSuchElementException:
 	        print bcolors.FAIL + '\t' + "No Images Found!" + bcolors.ENDC
 		return 0
-	links = []
-	for element in elements:
+	for element in linkElements:
 			links.append(element.get_attribute('href'))
-	friends = []
 	#Open wordlist
-	if depth == initdepth:
-		wordlist = open(inituser, "w")
+	if depth == initDepth:
+		wordlist = open(initUser, "w")
 	else:
-		wordlist = open(inituser, "a")
+		wordlist = open(initUser, "a")
 	#Open each post
 	for link in links:
 		driver.get(link)
 		#Find words for wordlist in post comment
 		try:
 			for word in driver.find_element_by_xpath("//div/div/article/div/div/ul/li/span/span").text.split(" "):
-				word = REGEX.sub('', word)
-				if word not in words and len(word) > MINWORDSIZE and word.strip() != "":
-					words.append(word)
+				word = regex.sub('', word)
+				if word not in allWords and len(word) > minWordSize and word.strip() != "":
+					allWords.append(word)
 					wordlist.write(word+"\n")
 		except NoSuchElementException:
 			pass
 		#Find words for wordlist in post hashtags
 		try:
-                        for element in driver.find_elements_by_xpath("//div/div/article/div/div/ul/li/span/a"):
-				word = element.text[1:]
-				word = REGEX.sub('', word)
-                                if word not in words and len(word) > MINWORDSIZE and word.strip() != "":
-					words.append(word)
+                        for hashElement in driver.find_elements_by_xpath("//div/div/article/div/div/ul/li/span/a"):
+				word = hashElement.text[1:]
+				word = regex.sub('', word)
+                                if word not in allWords and len(word) > minWordSize and word.strip() != "":
+					allWords.append(word)
                                         wordlist.write(word+"\n")
 		except NoSuchElementException:
 			pass
@@ -115,9 +114,9 @@ def scrapeUser(user, depth):
 			try:
 				friendElements = driver.find_elements_by_xpath("//body/span/section/main/div/div/article/div/div/ul/li/a")
 				for element in friendElements:
-					if element.text not in allfriends and "View all" not in element.text and element.text != user:
+					if element.text not in allFriends and "View all" not in element.text and element.text != user:
 						friends.append(element.text)
-						allfriends.append(element.text)
+						allFriends.append(element.text)
 			except NoSuchElementException:
 				pass
 	print bcolors.OKGREEN + '\t' + "Found all words and friends for " + user + bcolors.ENDC
@@ -127,11 +126,12 @@ def scrapeUser(user, depth):
 		if friends:
 			for friend in friends:
 				scrapeUser(friend, depth-1)
-				print bcolors.OKGREEN + '\t' + user + " friends: " + str(friends.index(friend)+1) + "/" + str(len(friends)) + bcolors.ENDC
+				print chr(27) + "[2J" + bcolors.OKGREEN + '\t' + user + " friends: " + str(friends.index(friend)+1) + "/" + str(len(friends)) + bcolors.ENDC
  		else:
 			print bcolors.FAIL + user + " has no friends :(" + bcolors.ENDC
 	#If all goes well, print a success
-	if depth == initdepth:
-		print "Successfully saved wordlist " + inituser
-#Run the initial function
-scrapeUser(inituser, initdepth)
+	if depth == initDepth:
+		print "Successfully saved wordlist " + initUser
+#Clear the screen and run the initial function
+print chr(27) + "[2J"
+scrapeUser(initUser, initDepth)
