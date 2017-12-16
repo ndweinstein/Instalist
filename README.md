@@ -10,7 +10,7 @@ I take no responsibility for what you do with this program.
   The program needs permission to run  
   `cd Instalist`  
   `chmod +x Instalist.py`  
-  This program requirese selenium, and phantomJS.
+  This program requirese selenium, and phantomJS.  
   `pip install selenium`  
   PhantomJS will not work if installed by apt-get. You must get the binary from the official website.  
   http://phantomjs.org/download.html
